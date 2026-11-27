@@ -63,3 +63,40 @@ def testTransportFailure(failure, monkeypatch):
 def testThinkingOnlyIsNotEmail():
     with pytest.raises(ValueError):
         readEmailResponse({"done":True,"message":{"role":"assistant","thinking":"reasoning"}})
+
+@pytest.mark.parametrize('failurePhase',['openResponse','readResponse','decodeJson','validateContent'])
+def testReaderDiagnosticIdentifiesFailurePhaseWithoutContents(failurePhase,caplog):
+    caplog.set_level('DEBUG',logger='app.providers.ollamaProvider')
+    class ReadTimeout(BytesIO):
+        def read(self,*args): raise TimeoutError('PRIVATE transport detail')
+    if failurePhase=='openResponse': replacement={'side_effect':TimeoutError('PRIVATE transport detail')}
+    elif failurePhase=='readResponse': replacement={'return_value':ReadTimeout(b'')}
+    elif failurePhase=='decodeJson': replacement={'return_value':BytesIO(b'PRIVATE invalid JSON')}
+    else: replacement={'return_value':BytesIO(json.dumps({'done':False,'message':{'content':'PRIVATE response'}}).encode())}
+    with patch('app.providers.ollamaProvider.openLocalRequest',**replacement):
+        with pytest.raises(ProviderUnavailable):
+            OllamaProvider('http://127.0.0.1:11434','local').chat('PRIVATE SYSTEM','PRIVATE EMAIL',{},readerDiagnostics=True)
+    details=[record.readerTransportDiagnostics for record in caplog.records if hasattr(record,'readerTransportDiagnostics')][-1]
+    assert details['phase']==failurePhase and details['socketTimeoutSeconds']==60
+    assert 'PRIVATE' not in caplog.text
+    assert details['elapsedMilliseconds']>=0
+
+
+def testReaderDiagnosticSeparatesCompletedTransportAndInvalidSchema(caplog):
+    from app.readerAnalysis import ReaderRequest
+    caplog.set_level('DEBUG',logger='app.providers.ollamaProvider')
+    wire=completedResponse('{}');wire.update({'prompt_eval_count':321,'eval_count':42,'load_duration':123,'thinking':'PRIVATE thinking'})
+    with patch('app.providers.ollamaProvider.openLocalRequest',return_value=BytesIO(json.dumps(wire).encode())):
+        with pytest.raises(ProviderUnavailable):
+            OllamaProvider('http://127.0.0.1:11434','local').analyzeReader(ReaderRequest(receivedEmail='PRIVATE received email with several words.'))
+    details=[record.readerTransportDiagnostics for record in caplog.records if hasattr(record,'readerTransportDiagnostics')][-1]
+    assert details['phase']=='completed' and details['prompt_eval_count']==321
+    assert any('readerSchema' in record.message and "'outcome': 'invalid'" in record.message for record in caplog.records)
+    assert 'PRIVATE' not in caplog.text and 'thinking' not in caplog.text
+
+
+def testNonReaderCallsDoNotEmitReaderDiagnostics(caplog):
+    caplog.set_level('DEBUG',logger='app.providers.ollamaProvider')
+    with patch('app.providers.ollamaProvider.openLocalRequest',return_value=BytesIO(json.dumps(completedResponse()).encode())):
+        OllamaProvider('http://127.0.0.1:11434','local').improve(request)
+    assert not any('readerTransport' in record.message for record in caplog.records)

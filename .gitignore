@@ -22,6 +22,15 @@ __pycache__/
 .agents/
 .idea/
 .vscode/
+.cloudflared/
+.cloudflare/
+.netlify/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.betaPrivate/
+betaAccessCodes*.json
+accessCodes*.json*
 credentials.json
 serviceAccount*.json
 *.pem
@@ -47,6 +56,15 @@ htmlcov/
 npm-debug.log*
 .DS_Store
 Thumbs.db
+.venv*/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.orig
+*.rej
+*~
 
 # Local inference weights are obtained separately, never published with the source.
 .ollama/
@@ -62,6 +80,9 @@ Thumbs.db
 AGENTS.md
 /publicationReview.md
 /technicalDocumentation.md
+
+# Unused legacy logo retained locally; current branding uses ritmoMonogram.svg.
+/frontend/public/brand/agentElMonogram.svg
 
 # Publish only individually reviewed synthetic fixtures from the evaluation tree.
 /evaluation/*

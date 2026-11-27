@@ -6,7 +6,7 @@ from .ambiguityChecker import unresolvedQuestions
 reviewLimitations = ["Optional review uses the same local model as generation; it is not independent and can repeat or miss errors.", "No findings does not establish semantic equivalence. Human review and explicit approval remain required."]
 
 def reviewMeaning(request: ValidationRequest, reviewer: SemanticReviewer | None) -> SemanticReviewResult:
-    if unresolvedQuestions(request.originalDraft, request.clarifications):
+    if unresolvedQuestions(request.originalDraft, request.clarifications, request.audience):
         return SemanticReviewResult(reviewStatus="unavailable", limitations=reviewLimitations + ["Resolve the source ambiguities before requesting model review."])
     if reviewer is None:
         return SemanticReviewResult(reviewStatus="unavailable", limitations=reviewLimitations + ["Model review is unavailable in mock mode."])

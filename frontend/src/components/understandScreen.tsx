@@ -1,0 +1,25 @@
+import {communicationStyles,StyleGlyph} from './discoverScreen';
+import type {ReaderState,WritingStyle} from '../services/readerState';
+interface ReaderProps {receivedEmail:string;disabled:boolean;analyzing:boolean;reader:ReaderState;onChange:(value:string)=>void;onAnalyze:()=>void;onReview:(style:WritingStyle|null)=>void}
+export function UnderstandScreen({receivedEmail,disabled,analyzing,reader,onChange,onAnalyze,onReview}:ReaderProps) {
+  const result=!reader.outdated?reader.result:null;
+  const guidanceStyle=reader.reviewed&&reader.selectedStyle?reader.selectedStyle:result?.primaryStyle;
+  const guidance=communicationStyles.find(style=>style.name===guidanceStyle);
+  return <section className="journeyScreen readerScreen" aria-labelledby="understandTitle">
+    <div className="workspaceIntro"><div><p className="eyebrow">STAGE 2 · UNDERSTAND</p><h1 id="understandTitle">Understand how your reader<br/><span>communicates.</span></h1><p>Paste an email you've received. Ritmo will examine its writing characteristics and help you consider how to respond.</p></div></div>
+    <div className="readerAnalysisGrid">
+      <section className="panel readerInput"><label htmlFor="receivedEmail">Paste the email you received</label><p id="readerPrivacy" className="fieldHint">Avoid including passwords, sensitive personal information, or confidential details you aren't authorized to share.</p><textarea id="receivedEmail" aria-describedby="readerPrivacy" disabled={disabled} maxLength={20000} value={receivedEmail} onChange={event=>onChange(event.target.value)} placeholder="Paste the message you'd like Ritmo to analyze..."/><div className="readerInputActions"><span>{receivedEmail.length.toLocaleString()} / 20,000</span><button className="button primaryButton" disabled={disabled||!receivedEmail.trim()} onClick={onAnalyze}>{analyzing?'Analyzing…':'Analyze Writing Style'}</button></div><p className="fieldHint">Analysis runs only when requested, through the configured local Ollama model. Email and results remain in application memory; no sending or history.</p></section>
+      <section className="panel readerResults" aria-label="Writing-style analysis" aria-busy={analyzing}>
+        <div role="status" aria-live="polite">{analyzing&&<p>Examining the writing sample…</p>}{reader.error&&<p className="readerError">{reader.error}</p>}{reader.outdated&&<p className="readerWarning">Email changed. Previous analysis and style confirmation are outdated. Analyze again or explicitly choose a style for the current email.</p>}</div>
+        {!result&&!analyzing&&<><h2>Suggested Writing Style</h2><p>No current analysis. Analyze the email, or choose a style yourself.</p></>}
+        {result&&<>
+          <p className="eyebrow">Suggested Writing Style</p><h2 className={result.primaryStyle?`readerStyle style${result.primaryStyle}`:''}>{result.primaryStyle&&<StyleGlyph name={result.primaryStyle}/>} {result.primaryStyle||'Inconclusive'}</h2>
+          <p>{result.primaryStyle?'Based on characteristics observed in the email. This is a tentative suggestion for your review.':'Ritmo could not make a clear style suggestion from this email. You can choose a style yourself before continuing.'}</p>
+          {guidance&&<section className={`readerGuidance style${guidance.name}`} aria-label="Reader communication guidance">{guidanceStyle!==result.primaryStyle&&<p className="fieldHint">Guidance for your selected style</p>}<p>{guidance.description}</p><h3>How to communicate with {guidance.name==='Driver'?'a':'an'} {guidance.name} reader</h3><ul>{guidance.characteristics.map(point=><li key={point}>{point}</li>)}</ul></section>}
+        </>}
+        <div className="readerReview"><h3>Your reviewed choice</h3><p>Confirm a style or choose Inconclusive before continuing to Compose. Your choice determines the reader guidance and target style in Compose.</p>{result?.primaryStyle&&<button className="button secondaryButton" disabled={disabled} onClick={()=>onReview(result.primaryStyle)}>Accept suggested {result.primaryStyle}</button>}<label htmlFor="readerChoice">Select a style or leave it unspecified</label><select id="readerChoice" disabled={disabled} value={reader.reviewed?(reader.selectedStyle||'unspecified'):'unreviewed'} onChange={event=>onReview(event.target.value==='unspecified'?null:event.target.value as WritingStyle)}><option value="unreviewed" disabled>Not reviewed yet</option><option value="unspecified">Inconclusive / no style specified</option>{communicationStyles.map(style=><option key={style.name} value={style.name}>{style.name}</option>)}</select>{reader.reviewed&&<p role="status">{reader.selectedStyle?`User-selected style: ${reader.selectedStyle}${result?.primaryStyle===reader.selectedStyle?' (matches suggestion)':' (your choice)'}.`:'You chose not to specify a style.'}</p>}</div>
+        <p className="fieldHint">These characteristics describe patterns of communication, not fixed personality types. A person may demonstrate characteristics of multiple styles depending on the situation.</p>
+      </section>
+    </div>
+  </section>;
+}

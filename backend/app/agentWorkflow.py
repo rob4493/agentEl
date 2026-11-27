@@ -10,7 +10,7 @@ class ClarificationRequired(Exception):
 
 def improveEmail(request: EmailRequest, provider: ModelProvider) -> ImprovementResult:
     started = perfCounter()
-    questions = unresolvedQuestions(request.originalDraft, request.clarifications)
+    questions = unresolvedQuestions(request.originalDraft, request.clarifications, request.audience)
     if questions:
         raise ClarificationRequired(questions)
     analysis = extractFacts(request.originalDraft, request.audience, request.clarifications)

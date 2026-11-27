@@ -1,4 +1,6 @@
 import json
+import logging
+from time import perf_counter as perfCounter
 from urllib.request import Request, build_opener, HTTPRedirectHandler, ProxyHandler
 from http.client import HTTPException
 import re
@@ -7,6 +9,8 @@ from urllib.parse import urlparse
 from ..emailSchemas import EmailRequest, ValidationRequest, SemanticReport
 from .modelProvider import ProviderUnavailable
 from ..agentInstructions import sharedEmailInstructions, semanticReviewInstructions
+
+logger = logging.getLogger(__name__)
 
 class LocalOnlyRedirectHandler(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -56,16 +60,61 @@ class OllamaProvider:
         except ValueError as error:
             raise ProviderUnavailable("Local semantic review returned invalid structured output.") from error
 
-    def chat(self, instructions: str, requestData: str, responseFormat: dict | None = None) -> str:
+    def analyzeReader(self, request):
+        from ..readerAnalysis import ReaderReport, readerModelSchema
+        from ..readerReference import buildReaderInstructions
+        try:
+            content = self.chat(buildReaderInstructions(), request.model_dump_json(), readerModelSchema(), readerDiagnostics=True)
+            schemaStarted = perfCounter()
+            try:
+                report = ReaderReport.model_validate_json(content)
+            except ValueError:
+                logger.debug('readerSchema %s', {'outcome':'invalid', 'elapsedMilliseconds':round((perfCounter()-schemaStarted)*1000,3)})
+                raise
+            logger.debug('readerSchema %s', {'outcome':'valid', 'elapsedMilliseconds':round((perfCounter()-schemaStarted)*1000,3)})
+            return report
+        except ValueError as error:
+            raise ProviderUnavailable("Local writing analysis returned invalid structured output. No fallback was used.") from error
+
+    def chat(self, instructions: str, requestData: str, responseFormat: dict | None = None, readerDiagnostics: bool = False) -> str:
         payload = {"model": self.model, "stream": False, "think": False, "messages": [{"role": "system", "content": instructions}, {"role": "user", "content": requestData}]}
         if responseFormat is not None:
             payload["format"] = responseFormat
+        started = perfCounter()
+        phase = 'openResponse'
+        diagnostics = {'model':self.model, 'systemCharacters':len(instructions), 'userDataCharacters':len(requestData), 'schemaCharacters':len(json.dumps(responseFormat)) if responseFormat else 0, 'socketTimeoutSeconds':60}
         try:
             httpRequest = Request(self.baseUrl + "/api/chat", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
+            # With stream:false, waiting for response headers may include Ollama queue/load/
+            # prompt evaluation/generation. This phase alone cannot attribute server compute time.
             with openLocalRequest(httpRequest) as response:
+                diagnostics['headersMilliseconds'] = round((perfCounter()-started)*1000,3)
+                phase = 'readResponse'
                 responseBody = response.read(200001)
+            diagnostics['bodyMilliseconds'] = round((perfCounter()-started)*1000,3)
+            diagnostics['responseBytes'] = len(responseBody)
             if len(responseBody) > 200000:
                 raise ValueError("Model response exceeded size limit")
-            return readEmailResponse(json.loads(responseBody))
+            phase = 'decodeJson'
+            result = json.loads(responseBody)
+            phase = 'validateContent'
+            content = readEmailResponse(result)
+            # Allowlisted numeric counters only: no message, thinking, error body or excerpts.
+            if readerDiagnostics:
+                for key in ['prompt_eval_count','eval_count','total_duration','load_duration','prompt_eval_duration','eval_duration']:
+                    value = result.get(key)
+                    if isinstance(value, (int,float)) and not isinstance(value,bool):
+                        diagnostics[key] = value
+            phase = 'completed'
+            return content
         except (URLError, TimeoutError, ValueError, HTTPException, OSError) as error:
+            diagnostics['errorType'] = type(error).__name__
+            reason = getattr(error, 'reason', None)
+            if reason is not None:
+                diagnostics['reasonType'] = type(reason).__name__
             raise ProviderUnavailable("Local Ollama unavailable or returned invalid output. No fallback was used.") from error
+        finally:
+            if readerDiagnostics:
+                diagnostics['phase'] = phase
+                diagnostics['elapsedMilliseconds'] = round((perfCounter()-started)*1000,3)
+                logger.debug('readerTransport %s', diagnostics, extra={'readerTransportDiagnostics':diagnostics})

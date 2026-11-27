@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "source": "Previously supplied Targeting the Reader Communication Style course-handout wording; adaptation use only.",
+  "styles": [
+    {
+      "style": "Expressive",
+      "guidance": [
+        "Look for opportunities to recognize achievements",
+        "Seek to inspire",
+        "Use an energetic and enthusiastic tone",
+        "Paint the big picture / vision before going into detail",
+        "Present ideas creatively",
+        "Provide lots of visual stimulus",
+        "Use \"action\" language",
+        "Use color"
+      ]
+    },
+    {
+      "style": "Amiable",
+      "guidance": [
+        "Highlight the positive benefits to people",
+        "Write about the relationship in terms of \"one team\"",
+        "Offer personal commitments",
+        "Provide solutions to minimize the effects of change on people",
+        "Be friendly, warm, cooperative and patient",
+        "Show empathy to those affected by the recommendations"
+      ]
+    },
+    {
+      "style": "Driver",
+      "guidance": [
+        "Focus on results, outcomes and the bottom line",
+        "Provide only necessary detail",
+        "Provide options to make the decision easy",
+        "Emphasize company / organizational context",
+        "State specific action required of decision maker",
+        "Keep it short and succinct",
+        "Make definitive statements",
+        "Avoid using excessive emotion"
+      ]
+    },
+    {
+      "style": "Analytical",
+      "guidance": [
+        "Structure and logic is important",
+        "Have all the facts in order",
+        "Use appropriate technical terms",
+        "Provide all necessary details",
+        "Use evidence to prove any claim",
+        "Explain the process step by step – show the logic",
+        "Talk specifically – not in generalizations"
+      ]
+    }
+  ]
+}

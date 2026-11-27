@@ -1,6 +1,6 @@
-# Agent EL
+# Ritmo
 
-**Agent EL**, or **EL** for short, is an English email workspace designed to help a sender communicate with a mixed professional audience. It produces one shared draft for review, rather than separate recipient-specific messages.
+**Ritmo** (formerly Agent EL) is a human-centered AI communication-learning platform and English email workspace. It helps people understand communication styles and adapt their writing while retaining control of their intended message. AI suggestions require human review; Ritmo does not send email.
 
 This is an independent project. It is not an official United Nations application, partnership or endorsed project.
 
@@ -8,23 +8,28 @@ Repository: [rob4493/agentEl](https://github.com/rob4493/agentEl).
 
 ## Current functionality
 
-The local prototype follows **Confirm → Improve and Compare → Decide**:
+The local prototype follows **Discover → Understand → Compose → Review** across four screens:
 
-- Paste an English email and specify the group, stated technical background, objectives, known preferences and required details.
-- Clarify selected action/deadline/approval expressions before generation. These deterministic rules are limited; they do not detect every ambiguity.
-- Generate one draft using a replaceable provider: mock mode by default, or explicitly configured local Ollama.
-- Compare source and output, inspect source passages and sender-confirmed context, and review deterministic wording, number, date and targeted content warnings.
-- Inspect selected observable communication changes. These descriptions are comparisons, not the model's internal reasoning.
-- Edit and revalidate, reject, regenerate, or explicitly approve the current draft before copying. Changes revoke prior checks and approval. The application does not send email.
-- Optionally request experimental structured AI meaning review. It adds one local inference call using the same model as generation and is not an independent accuracy check.
+- **Discover:** explore Expressive, Amiable, Driver and Analytical communication through an interactive educational carousel. These are contextual writing patterns, not permanent personality labels.
+- **Understand:** optionally analyze a received email, then confirm or override the tentative reader-style suggestion before proceeding.
+- **Compose:** write an original response, choose a reader style and request a local Ollama adaptation. Incoming messages supply context; the original response remains authoritative. General clarity improvement and limited ambiguity clarification are also available.
+- **Review:** compare the original and suggestion, inspect warnings, edit and revalidate, regenerate or reject. Explicitly approve the current revision before copying. Editing source, audience or output revokes earlier validation and approval.
+
+Optional experimental AI meaning review adds one inference with the same model; it is not an independent accuracy check. Internal editing experiments and evaluation reports are not production features.
+
+Discover introduces four writing patterns; Understand analyzes an optional received email only when requested, using the configured local Ollama model. It displays Ritmo's tentative writing-style suggestion, a brief style description, and the established course guidance for communicating with the selected reader. Source evidence is validated internally and is not displayed in the result panel. Exact source matching does not establish that a style interpretation is correct. Users must confirm or override the suggestion (or explicitly choose Inconclusive) before continuing from Understand to Compose. Editing invalidates prior analysis and selection. Compose displays the incoming message and carries forward only an explicitly confirmed or manually selected target style. Its local Ollama adaptation uses the original response as the source of truth; incoming text is untrusted background, not permission to add facts. Writer-style analysis and personalized learning summaries remain planned. Mock mode does not fabricate reader analysis. Compose contains the working email workspace; Review reuses its comparison, findings and explicit approval controls. Navigation preserves entered values until the page is reloaded.
+
+The Compose workspace has side-by-side editors on desktop and stacked editors on small screens, editable audience and goal suggestions with optional preferences below the original draft, a key-change summary, and expandable review panels. Approve and Copy approved are separate actions. The header reports backend availability and the configured provider; it does not claim that Ollama or a model is connected based on service health alone.
 
 Mock mode only adjusts paragraph spacing and labels its output as a demonstration; it is not an AI rewrite. Real AI output can invent or omit information. Neither deterministic checks nor optional model review establishes semantic equivalence. The sender must review the exact final content.
+
+Reader analysis is experimental: exact quotes do not validate style interpretations. Short samples may be inconclusive, model responses may be rejected, and styles may overlap. In local development, received emails remain in application memory and are processed through local Ollama. Remote access introduces network intermediaries; avoid secrets or confidential content you are not authorized to use.
 
 ## Technology stack
 
 - React, TypeScript, Vite and responsive CSS.
 - Python, FastAPI, Pydantic, Uvicorn and pytest.
-- Vitest for frontend review-state tests.
+- Vitest for frontend state, transport and component rendering tests.
 - Optional local Ollama with `qwen3.5:4b` as the default model candidate.
 
 Frontend dependency resolutions are in `frontend/package-lock.json`; backend dependency ranges are in `backend/requirements.txt`.
@@ -79,7 +84,7 @@ npm run dev --prefix frontend
 
 Open [the workspace](http://127.0.0.1:5173). If that port is occupied, run `npm run dev --prefix frontend -- --port 5174` and open [port 5174](http://127.0.0.1:5174). Vite proxies `/api` to the backend on port 8000.
 
-The provider defaults to mock. Load the synthetic example or paste a draft, confirm the audience, then choose **Confirm & improve**. Answer any clarification questions and try again. Review comparison/findings, edit and revalidate as necessary, and explicitly approve before copying.
+The provider defaults to mock. Choose Get Started, enter an optional incoming email in Understand, and explicitly select/confirm a reader style. In Compose, write your own response, choose a target style if needed, then select **Adapt my response**. Style adaptation requires the configured local Ollama provider; mock mode returns an honest unavailable result, not a fabricated adaptation. **Improve clarity only** retains the existing general improvement/mock workflow. Answer any clarification questions, then review both drafts and warnings in Review. Edit and revalidate as needed, and explicitly approve before copying. Example loaders do not overwrite a nonempty response.
 
 ## Enable local Ollama generation
 
@@ -113,6 +118,26 @@ Use `COMMUNICATION_PROVIDER=mock` to select demonstrations explicitly. No `.env`
 
 Ollama calls request `think: false` and consume only final message content. Explicit leaked reasoning tags or malformed/incomplete output cause a provider failure. Generation retains a 60-second socket timeout, which is not a strict end-to-end wall-clock deadline. Optional AI review may take substantial additional time, fail, misclassify differences or supply unusable evidence; unavailable review is reported explicitly.
 
+## Controlled remote beta — prepared, not activated
+
+The intended controlled-beta architecture is:
+
+```text
+Netlify-hosted frontend -> HTTPS Cloudflare Tunnel -> local FastAPI -> local Ollama
+```
+
+For direct browser-to-API requests, Netlify hosts the static frontend and Cloudflare carries API traffic. Local inference does not mean remote email submissions stay entirely on the user's device. A proxy through Netlify would introduce another service into that data path.
+
+The checkout includes opt-in beta authentication with individually revocable, expiring access codes; exact-origin CORS; actual-byte request limits; bounded per-code/IP rate controls; one active inference worker; restricted documentation; and no-store API responses. Codes stay in browser memory and private operator files store only verifiers. Authentication does not establish model accuracy. Local development remains unchanged when beta mode is disabled.
+
+`netlify.toml` builds `frontend` using `npm run build` and publishes `dist`. Set build variables `VITE_BETA_ENABLED=true` and `VITE_API_BASE_URL` to the approved HTTPS API **origin without `/api`**. All frontend API calls, including health and reader analysis, use this centralized base. Production beta builds fail if it is missing or invalid. Generated security headers restrict API connections to the configured origin. Never place access codes, hashes or Cloudflare secrets in frontend bundles or `VITE_*` variables. Preview builds intentionally fail closed until separately configured/approved.
+
+The confirmed frontend origin is `https://ritmoagent.netlify.app`; the initial API uses a Cloudflare Quick Tunnel whose URL is not yet assigned. Every new Quick Tunnel hostname requires updating the API build variable and rebuilding/redeploying. Keep FastAPI on `127.0.0.1:8000` and Ollama on `127.0.0.1:11434`; never expose Ollama, Vite or test servers. Use one backend worker. Before exposing anything, generate private codes, enable backend beta mode, verify unauthenticated calls are rejected and obtain tunnel/deployment approval. No external connectivity is certified by the local tests.
+
+See [the beta operator guide](docs/privateBetaSetup.md) for exact Netlify settings, private credential-generation/revocation commands, backend startup, limits and approval-gated Quick Tunnel instructions. No real credentials/configuration belong in Git. Developer-tool advisories remain under review; no automatic major dependency upgrade has been applied.
+
+No application script provisions a tunnel or sends email. A connected Netlify site can automatically deploy after a Git push/merge; keep automatic publishing disabled or obtain explicit deployment approval first. Preserve the existing human review and approval safeguards.
+
 ## Tests and build
 
 With the Python environment activated, from the repository root:
@@ -143,6 +168,9 @@ The fixtures are source/test inputs, not real correspondence or raw model report
 | `POST /api/analyze` | Deterministic source facts, context and selected ambiguity questions |
 | `POST /api/improve` | One shared draft and deterministic review; unresolved ambiguity returns 409 |
 | `POST /api/validate` | Recompute deterministic warnings and observable changes after editing |
+| `POST /api/adaptResponse` | One local style-adaptation call from receivedEmail, originalDraft and explicit targetStyle (plus audience/clarifications); returns suggestion, model-described changes and preservation warnings |
+| `POST /api/adaptResponse/validate` | Recheck an edited response, including conservative qualification and incoming-passage warnings |
+| `POST /api/readerAnalysis` | Requested local received-email writing observations, verified quotes, uncertainty and limitations |
 | `POST /api/review` | Explicit, experimental same-model review; separate completed/unavailable status |
 
 Interactive request/response schemas are available at [the backend API docs](http://127.0.0.1:8000/docs) while the server runs. Source text, sender-confirmed context, generated content, deterministic findings and model interpretations remain distinct. Model review never promotes an interpretation into an established source fact or automatically approves a draft.
@@ -155,5 +183,8 @@ Interactive request/response schemas are available at [the backend API docs](htt
 - Source character limits do not guarantee that source plus audience context fits the model's loaded token context. Long inputs, cold starts, concurrency and request cancellation need further evaluation.
 - The UI supports local review; approval is not a signed audit record. Automated frontend tests are state tests, not comprehensive browser, clipboard, accessibility or device certification.
 - The application is designed for English; it does not enforce language detection. Personalized Mode C and multilingual generation are not implemented.
+- Four synthetic Compose scenarios are available only in the Vite development build. They expose intended demonstration styles separately from live classifications and require explicit loading/normal human style selection. Their starter responses load only into an empty editor; they are not validated accuracy examples.
+- Adaptation can omit qualifications or invent explanations even when amounts/dates remain unchanged. Model-described style changes also require review. Conservative checks can warn about legitimate paraphrases and miss altered names, nuanced commitments or paraphrased incoming additions.
+- Compose checks also flag some changed word quantities, weekdays/times, sender sign-offs, commitment strength, conditions and status transitions. These warnings are incomplete heuristics; a clear prompt and an empty warning list do not establish faithful meaning or correct style.
 - Drafts are held in application memory without a user database or intentional server-side draft persistence. There are no email account integrations, automatic sending or hosted AI providers. OS clipboard history and Ollama's own behavior are outside application control.
-- This is a loopback development prototype without authentication, production TLS, rate limiting or a transport body-size cap. CORS is not authentication. Do not expose the development servers as a public service. Treat drafts as untrusted data; prompt separation is not proven resistance to prompt injection.
+- Default local development mode is intentionally unauthenticated and must remain loopback-only. Explicit beta mode adds access codes and request controls but is not a production-security certification, distributed service or proven prompt-injection defense. Static frontend assets remain public; API data/inference is protected by the backend, not by hiding frontend controls. Expiry/revocation blocks new requests, not already received content or admitted inference. Deployment and tunnel activation require separate approval.

@@ -26,8 +26,8 @@ def passageCategories(passage: str) -> list[str]:
 
 def extractFacts(originalDraft: str, audience: AudienceContext | None = None, clarifications: list[Clarification] | None = None) -> AnalysisResult:
     answers = clarifications or []
-    unresolvedQuestions(originalDraft, answers)
-    questions = findAmbiguities(originalDraft)
+    unresolvedQuestions(originalDraft, answers, audience)
+    questions = findAmbiguities(originalDraft, audience)
     passages = splitPassages(originalDraft)
     facts = []
     for index, passage in enumerate(passages):
@@ -42,4 +42,4 @@ def extractFacts(originalDraft: str, audience: AudienceContext | None = None, cl
         context.append(SourceFact(factId=answer.ambiguityId, category=question.category, categories=[question.category], description=answer.answer, sourcePassage=answer.sourcePassage, origin="userConfirmedContext", evidenceSource="clarification", extractionUncertainty="Sender supplied this clarification; verify its accuracy."))
     if audience and audience.requiredDetails.strip():
         context.append(SourceFact(factId="contextRequiredDetails", category="technicalFact", categories=["technicalFact"], description=audience.requiredDetails, sourcePassage=audience.requiredDetails, origin="userConfirmedContext", evidenceSource="audienceContext", extractionUncertainty="Sender-specified preservation guidance, not an inferred source claim."))
-    return AnalysisResult(facts=facts, confirmedContext=context, ambiguities=unresolvedQuestions(originalDraft, answers), senderIntent=audience.communicationObjectives if audience else "Confirm the sender's goals before generation.", limitations=["Rule-based, overlapping categories are incomplete. Exact source evidence is verified; interpretations and factual truth are not. Clarifications are sender-provided context."])
+    return AnalysisResult(facts=facts, confirmedContext=context, ambiguities=unresolvedQuestions(originalDraft, answers, audience), senderIntent=audience.communicationObjectives if audience else "Confirm the sender's goals before generation.", limitations=["Rule-based, overlapping categories are incomplete. Exact source evidence is verified; interpretations and factual truth are not. Clarifications are sender-provided context."])

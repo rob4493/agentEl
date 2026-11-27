@@ -1,0 +1,24 @@
+.composeWorkspace { max-width:1280px; margin:0 auto; }
+.composeIntro { margin:18px 0 24px; }
+.composeIntro h1 { font-size:clamp(30px,4vw,44px); letter-spacing:-1.1px; }
+.composeContext { display:grid; grid-template-columns:minmax(0,1fr) minmax(230px,.4fr); gap:28px; padding:24px; margin-bottom:20px; }
+.composeContext summary,.composePreferences summary,.composeChecks>summary,.composeDemo>summary { cursor:pointer; font-weight:650; padding:5px 0; }
+.composeContext pre { max-height:200px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.65; font:inherit; font-size:14px; margin:14px 0 0; padding-right:12px; }
+.composeContext label { display:block; margin-bottom:10px; font-weight:650; }
+.composeContext select { width:100%; min-height:46px; background:#f8fbfd; }
+.composePreferences { padding:18px 24px; margin-bottom:20px; }
+.composePreferences .audienceGrid { margin-top:18px; }
+.composeWorkspace .draftPanel { min-width:0; }
+.composeWorkspace .draftInput textarea { min-height:360px; font-size:16px; line-height:1.7; }
+.composeWorkspace .generateRow { flex-wrap:wrap; gap:12px; }
+.composeWorkspace .generateRow p { flex-basis:100%; margin:0; }
+.adaptationNotes { padding:22px; margin:20px 0; border-left:3px solid #009c9c; }
+.adaptationNotes h2 { font-size:20px; margin-bottom:10px; }
+.adaptationNotes h3 { font-size:14px; margin:12px 0 8px; }
+.adaptationNotes li { margin-bottom:6px; line-height:1.6; }
+.composeChecks { margin:22px 0; }
+.composeChecks>.reviewPanel { margin-top:14px; }
+.composeDemo { margin:18px 0; padding:18px 22px; }
+.composeDemo select { display:block; margin:10px 0; max-width:100%; }
+.composeDemo p { max-width:850px; font-size:13px; line-height:1.6; }
+@media(max-width:800px) { .composeContext { grid-template-columns:1fr; gap:20px; padding:20px; } .composeWorkspace .draftGrid { grid-template-columns:1fr; } .composeWorkspace .draftInput textarea { min-height:300px; } .composeIntro .modeBadge { display:none; } .composeWorkspace .workflowActions { padding:16px; } }

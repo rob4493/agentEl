@@ -1,0 +1,124 @@
+/* Shared workspace palette: style accents remain local to educational guidance. */
+:root { background:#071b2b; }
+.brandButton img { width:44px; height:44px; padding:0; background:transparent; border-radius:10px; margin-right:6px; }
+.brandButton .brandName { color:#e4eef5; }
+.unifiedWorkspace {
+  --fontBody:Inter,'Segoe UI',system-ui,sans-serif;
+  --fontEditorial:Georgia,'Times New Roman',serif;
+  font-family:var(--fontBody);
+  color-scheme:dark;
+  --surface:#102b3d;
+  --surfaceRaised:#16384b;
+  --editor:#0a2131;
+  --editorSuggested:#0d2b38;
+  --text:#e4eef5;
+  --muted:#b3cbd9;
+  --border:#365264;
+  --teal:#88ddd9;
+  --tealDark:#a2e9df;
+  --radius:14px;
+  --warning:#ffdc99;
+  --warningSurface:#372f22;
+  --success:#a3e9ca;
+  --successSurface:#173e38;
+  --discoverSurface:var(--surface);
+  --discoverText:var(--text);
+  --discoverMuted:var(--muted);
+  --discoverBorder:var(--border);
+}
+.unifiedWorkspace .panel { background:linear-gradient(135deg,#15394988,transparent 65%),#0d2939; border:1px solid var(--border); border-radius:18px; box-shadow:0 8px 30px #02121c26; }
+.unifiedWorkspace .workspace { padding-bottom:16px; }
+/* Decorative silhouettes may extend past the hero, never past the page. */
+.unifiedWorkspace .perspectiveHero { overflow:clip; }
+.unifiedWorkspace .button { min-height:44px; }
+.unifiedWorkspace :is(.draftHeading>.icon,.outputNotice>.icon,.changeContent summary .icon,.iconTile) { color:var(--teal); }
+.unifiedWorkspace :is(.iconTile,.suggestionChip[aria-pressed='true']) { background:var(--successSurface); color:var(--success); }
+.unifiedWorkspace :is(.draftState,.changeContent summary) { color:var(--muted); }
+.unifiedWorkspace :is(.clarificationHeading>.icon,.questionNumber,.reviewAlert .icon) { color:var(--warning); }
+.unifiedWorkspace .workspaceIntro { padding:14px 0 22px; margin:24px 0 10px; }
+.unifiedWorkspace .workspaceIntro h1 { font-family:var(--fontEditorial); font-size:clamp(34px,4.2vw,54px); line-height:1.08; font-weight:700; letter-spacing:-1px; margin-bottom:20px; }
+.unifiedWorkspace .workspaceIntro h1 span { color:var(--teal); }
+.unifiedWorkspace .workspaceIntro>div>p:not(.eyebrow) { max-width:730px; font-size:16px; line-height:1.7; }
+.unifiedWorkspace .readerAnalysisGrid { gap:28px; align-items:start; }
+.unifiedWorkspace .readerInput,.unifiedWorkspace .readerResults { padding:28px; background:linear-gradient(135deg,#15394988,transparent 65%),#0d2939; border-radius:18px; }
+.unifiedWorkspace .readerInput { border-top:2px solid #70c8c2; }
+.unifiedWorkspace .readerInput textarea { height:320px; min-height:280px; }
+.unifiedWorkspace .readerResults h2 { font-family:var(--fontEditorial); font-size:32px; font-weight:700; }
+.unifiedWorkspace .readerResults p { font-family:var(--fontBody); font-size:15px; }
+.unifiedWorkspace .readerReview h3 { color:var(--teal); font-size:18px; }
+.unifiedWorkspace .readerReview { border-top-color:var(--border); padding-top:4px; }
+.unifiedWorkspace .readerGuidance { background:linear-gradient(140deg,var(--styleTint),#102b3d); }
+.unifiedWorkspace .composeIntro .modeBadge { background:transparent; border:1px solid var(--border); }
+.unifiedWorkspace .workspaceIntro p { line-height:1.65; }
+.unifiedWorkspace :is(input,textarea,select) { color:var(--text); background:var(--editor); border:1px solid var(--border); border-radius:10px; max-width:100%; }
+.unifiedWorkspace :is(input,textarea,select):focus-visible { outline:2px solid var(--teal); outline-offset:3px; }
+.unifiedWorkspace textarea::placeholder,.unifiedWorkspace input::placeholder { color:#a8bfce; opacity:1; }
+.unifiedWorkspace :is(.readerInput textarea,.draftInput textarea) { background:var(--editor); color:var(--text); font-size:16px; line-height:1.75; }
+.unifiedWorkspace .improvedPanel .draftInput textarea { background:var(--editorSuggested); border-color:#438080; }
+.unifiedWorkspace .draftInput textarea { min-height:360px; }
+.unifiedWorkspace :is(.draftHeading,.draftFooter,.outputNotice,.additionalPreferences,.generateRow) { background:transparent; border-color:var(--border); color:var(--muted); }
+.unifiedWorkspace :is(.draftHeading h2,.composeContext label,.reviewSection summary strong,.reviewHeading h2) { color:var(--text); }
+.unifiedWorkspace :is(.secondaryButton,.suggestionChip,.textButton) { background:var(--surfaceRaised); color:var(--text); border-color:#52768a; }
+.unifiedWorkspace .secondaryButton:hover:not(:disabled),.unifiedWorkspace .suggestionChip:hover { background:#21485b; }
+.unifiedWorkspace button:disabled { opacity:.5; box-shadow:none; }
+.unifiedWorkspace :is(.inputBadge,.outputBadge,.modeBadge,.developmentBadge,.countBadge) { background:#24485a; color:#d8f2ef; border-color:var(--border); }
+.unifiedWorkspace :is(.mockBadge,.betaBadge) { background:#39324d; color:#ded0ff; }
+.unifiedWorkspace :is(.readerError,.readerWarning,.reviewAlert,.inlineNotice,.clarificationCard,.preservationWarnings) { background:var(--warningSurface); color:var(--warning); border-color:#9b7c46; }
+.unifiedWorkspace .rejectButton { color:#ffb9b1; border-color:#ad776f; }
+.unifiedWorkspace :is(.draftState.isApproved,.isApproved,.successNotice) { color:var(--success); }
+.unifiedWorkspace :is(.reviewSection,.reviewNote,.summaryMetrics>span,.changeSummary) { background:var(--surfaceRaised); border-color:var(--border); color:var(--text); }
+.unifiedWorkspace .ambiguitySection { background:var(--warningSurface); border-color:#8a7048; }
+.unifiedWorkspace .validationSection { background:#17374e; }
+.unifiedWorkspace .semanticSection { background:#2b3049; }
+.unifiedWorkspace :is(.reviewBody,.summaryComparison pre,.generatingState) { background:var(--editor); color:var(--text); border-color:var(--border); }
+.unifiedWorkspace :is(.reviewSection summary small,.reviewNote p,.evidenceLabel,.finding small,.finding summary,.wordingDetails>summary,.characterCount,.fieldHint,.processingDetails,.draftFooter,.approvalHint) { color:var(--muted); }
+.unifiedWorkspace :is(blockquote,.summaryMetrics strong,.reviewSection .disclosureIcon) { color:var(--text); }
+.unifiedWorkspace .findingCategory { color:var(--warning); }
+.unifiedWorkspace :is(.draftPanel,.editorColumn,.summaryGrid>*,.draftGrid>*,.composeContext>*,.reviewPanel) { min-width:0; }
+.unifiedWorkspace :is(pre,blockquote,li,.finding,.workspaceMessage) { overflow-wrap:anywhere; }
+.unifiedWorkspace .summaryComparison pre { min-height:240px; line-height:1.75; }
+.unifiedWorkspace .reviewPanel { scrollbar-color:#537a8e var(--editor); }
+.unifiedWorkspace .workspaceService { margin-left:auto; color:var(--muted); }
+.unifiedWorkspace .workspaceService summary { cursor:pointer; }
+.unifiedWorkspace .stageStep:disabled { opacity:.55; }
+.unifiedWorkspace .stageStep.isActive { opacity:1; }
+/* No automatic rotation: deliberate arrows, keyboard input and horizontal touch gestures only. */
+.unifiedWorkspace .featuredCarousel { border:1px solid var(--styleAccent); border-radius:20px; background:linear-gradient(130deg,var(--styleTint),var(--surface) 65%); box-shadow:0 0 30px var(--styleGlow); overflow:hidden; }
+.unifiedWorkspace .styleCharacteristics { display:block; min-height:480px; margin:0; padding:40px clamp(22px,4vw,60px); border:0; background:transparent; border-radius:0; touch-action:pan-y pinch-zoom; }
+.unifiedWorkspace .featuredStyleContent { display:grid; grid-template-columns:minmax(220px,.8fr) minmax(0,1.3fr); gap:clamp(24px,4vw,64px); }
+.unifiedWorkspace .characteristicsHeading h3 { font-family:Georgia,'Times New Roman',serif; color:var(--styleAccent); font-size:clamp(32px,4vw,48px); margin:4px 0 16px; }
+.unifiedWorkspace .characteristicsIcon { width:58px; height:58px; border-radius:16px; }
+.unifiedWorkspace .characteristicsIcon .icon { width:34px; height:34px; }
+.unifiedWorkspace .characteristicsHeading .selectedStyleDescription { color:var(--text); font-size:18px; line-height:1.6; text-transform:none; letter-spacing:0; margin-bottom:20px; }
+.unifiedWorkspace .styleCharacteristics ul { display:block; padding-left:24px; margin:0; font-size:18px; line-height:1.7; }
+.unifiedWorkspace .styleCharacteristics li { margin:0 0 13px; padding-left:5px; color:var(--text); }
+.unifiedWorkspace .styleCharacteristics li::marker { color:var(--styleAccent); }
+.unifiedWorkspace .carouselNavigation { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:20px clamp(16px,4vw,60px); margin:0; border-top:1px solid var(--border); background:#071b2b55; }
+.unifiedWorkspace .carouselNavigation button { min-height:46px; border:1px solid var(--border); color:var(--text); background:var(--surfaceRaised); border-radius:10px; padding:10px 16px; }
+.unifiedWorkspace .carouselNavigation button:hover { border-color:var(--styleAccent); }
+.unifiedWorkspace .carouselPosition { color:var(--styleAccent); font-size:15px; white-space:nowrap; }
+.unifiedWorkspace .discoverExplorer { margin-top:24px; }
+.unifiedWorkspace .styleCharacteristics:focus-visible { outline:3px solid var(--styleAccent); outline-offset:-5px; }
+@media(max-width:1000px) {
+  .unifiedWorkspace .summaryGrid { grid-template-columns:1fr; }
+  .unifiedWorkspace .reviewPanel { position:static; max-height:none; }
+  .unifiedWorkspace .featuredStyleContent { grid-template-columns:minmax(180px,.7fr) minmax(0,1fr); gap:24px; }
+  .unifiedWorkspace .appHeader { gap:14px; padding:14px 20px; }
+}
+@media(max-width:760px) {
+  .unifiedWorkspace .workspace { padding:16px 16px 0; }
+  .unifiedWorkspace :is(.draftGrid,.readerAnalysisGrid,.composeContext,.audienceGrid,.summaryGrid) { grid-template-columns:1fr; }
+  .unifiedWorkspace .featuredStyleContent { grid-template-columns:1fr; gap:28px; }
+  .unifiedWorkspace .styleCharacteristics { min-height:0; padding:28px 22px; }
+  .unifiedWorkspace .styleCharacteristics ul { font-size:17px; line-height:1.65; }
+  .unifiedWorkspace .characteristicsHeading { gap:14px; }
+  .unifiedWorkspace .carouselNavigation { padding:16px 12px; gap:8px; }
+  .unifiedWorkspace .carouselNavigation button { font-size:13px; padding:10px; }
+  .unifiedWorkspace .draftInput textarea { min-height:320px; }
+  .unifiedWorkspace .workspaceName { display:none; }
+  .unifiedWorkspace .headerDivider { display:none; }
+  .unifiedWorkspace .brand { font-size:23px; }
+  .unifiedWorkspace .appHeader { position:relative; flex-wrap:wrap; }
+  .unifiedWorkspace .workspaceService .serviceStatus { min-width:0; padding:8px; }
+  .unifiedWorkspace :is(.workflowActions,.actionGroup,.journeyNavigation) { flex-wrap:wrap; }
+}
