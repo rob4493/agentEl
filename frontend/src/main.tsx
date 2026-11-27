@@ -1,13 +1,33 @@
-import React, {useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import fixture from '../../evaluation/fixtures/stagingEmail.json';
+import {initialReader,editReceived,receiveAnalysis,reviewReader,currentReaderContext,analyzeReceivedEmail,canContinueToCompose} from './services/readerState';
+import type {WritingStyle} from './services/readerState';
 import {ApiError, postJson} from './services/api';
-import {initialReview, changeDraft, validateDraft, approveDraft, rejectDraft, clearApproval} from './services/reviewState';
-import {FindingList} from './components/findingList';
-import type {AudienceContext, AmbiguityQuestion, AnalysisResult, ImprovementResult, ValidationResult, SemanticReviewResult} from './types/contracts';
+import {initialReview, changeDraft, validateDraft, approveDraft, rejectDraft, clearApproval, hasCurrentValidation, canCopyApprovedDraft} from './services/reviewState';
+import {AudienceFields, AdditionalPreferences} from './components/preparationFields';
+import {ServiceStatus} from './components/serviceStatus';
+import {BetaAccess} from './components/betaAccess';
+import {ComposeContext,AdaptationNotes} from './components/composeContext';
+import {createComposeRequest,requestAdaptation} from './services/composeState';
+import {DiscoverScreen, UnderstandScreen, ReviewSummary} from './components/journeyScreens';
+import {StageProgress} from './components/stageProgress';
+import {ReviewPanel} from './components/reviewPanel';
+import {ChangeSummary} from './components/changeSummary';
+import {WorkspaceIcon} from './components/workspaceIcon';
+import type {AudienceContext, AmbiguityQuestion, AnalysisResult, ImprovementResult, ValidationResult, SemanticReviewResult, AdaptationResult} from './types/contracts';
 import './styles.css';
+import './discoverTheme.css';
+import './composeTheme.css';
+import './workspaceTheme.css';
+const DemoScenarios=import.meta.env.DEV?React.lazy(()=>import('./components/demoScenarios')):null;
 
 function App() {
+  const [stage,setStage] = useState(0);
+  const [reader,setReader] = useState(initialReader);
+  const [receivedEmail,setReceivedEmail] = useState('');
+  const screenRef = useRef<HTMLDivElement>(null);
+  useEffect(()=>{screenRef.current?.focus();window.scrollTo({top:0});},[stage]);
   const [originalDraft,setOriginal] = useState('');
   const [audience,setAudience] = useState<AudienceContext>({...fixture.audience,communicationObjectives:'Make the message clear while preserving meaning',requiredDetails:''});
   const [questions,setQuestions] = useState<AmbiguityQuestion[]>([]);
@@ -15,68 +35,122 @@ function App() {
   const [analysis,setAnalysis] = useState<AnalysisResult|null>(null);
   const [improvedDraft,setImproved] = useState('');
   const [result,setResult] = useState<ImprovementResult|null>(null);
+  const [adaptation,setAdaptation] = useState<AdaptationResult|null>(null);
+  const [adaptationEdited,setAdaptationEdited] = useState(false);
+  const requestLock = useRef(false);
   const [validation,setValidation] = useState<ValidationResult|null>(null);
   const [semantic,setSemantic] = useState<SemanticReviewResult|null>(null);
   const [review,setReview] = useState(initialReview);
-  const [busy,setBusy] = useState(false);
+  const [pendingAction,setPendingAction] = useState<'improve'|'adapt'|'validate'|'semantic'|'reader'|null>(null);
   const [message,setMessage] = useState('');
   const draftRef = useRef<HTMLTextAreaElement>(null);
+  const clarificationRef = useRef<HTMLHeadingElement>(null);
+  const busy=pendingAction!==null;
   const clarifications = questions.filter(question=>answers[question.ambiguityId]?.trim()).map(question=>({ambiguityId:question.ambiguityId,sourcePassage:question.sourcePassage,answer:answers[question.ambiguityId].trim()}));
+  useEffect(()=>{if(stage===2&&questions.length) clarificationRef.current?.focus();},[questions.length,stage]);
+
+  // Keep the original revision safeguards: every content/context edit invalidates all previous review results.
   function invalidate(rejected=false) {setReview(state=>rejected?rejectDraft(state):changeDraft(state));setValidation(null);setSemantic(null);setMessage('');}
-  function discardOutput(rejected=false) {setResult(null);setImproved('');setAnalysis(null);invalidate(rejected);}
+  function discardOutput(rejected=false) {setAdaptation(null);setAdaptationEdited(false);setResult(null);setImproved('');setAnalysis(null);invalidate(rejected);}
+  function changeAudience(next:AudienceContext) {setAudience(next);setQuestions([]);setAnswers({});discardOutput();}
   function changeSource(value:string) {setOriginal(value);setQuestions([]);setAnswers({});discardOutput();}
+  function startAction(action:NonNullable<typeof pendingAction>) {if(requestLock.current)return false;requestLock.current=true;setPendingAction(action);return true;}
+  function finishAction() {requestLock.current=false;setPendingAction(null);}
+  async function analyzeReader() {
+    if(!startAction('reader'))return;setReader(initialReader);discardOutput();
+    try {setReader(receiveAnalysis(await analyzeReceivedEmail(receivedEmail)));}
+    catch(error) {setReader({...initialReader,error:error instanceof Error?error.message:'Local backend unavailable. Please try again.'});}
+    finally {finishAction();}
+  }
+  function changeIncoming(value:string) {setReceivedEmail(value);setReader(state=>editReceived(state));setQuestions([]);setAnswers({});discardOutput();}
+  function chooseReader(style:WritingStyle|null) {setReader(state=>reviewReader(state,style));discardOutput();}
+  const readerContext=currentReaderContext(receivedEmail,reader);
+  const readerConfirmed=canContinueToCompose(reader);
+  function navigateStage(next:number) {if(stage===1&&next>=2&&!readerConfirmed)return;setStage(next);}
   function reportError(error:unknown) {
     if(error instanceof ApiError && error.questions.length) setQuestions(error.questions);
     setMessage(error instanceof Error ? error.message : 'Backend unavailable.');
   }
   async function improve() {
-    setBusy(true);discardOutput();
+    if(!startAction('improve'))return;discardOutput();
     try {
       const request = {originalDraft,audience,clarifications,communicationMode:'shared'};
-      // This deterministic preflight never invokes a model. The backend independently enforces the same gate.
+      // Preflight is deterministic; the server independently enforces clarification before a single generation call.
       const checked = await postJson<AnalysisResult>('analyze',request);
       setAnalysis(checked);
-      if(checked.ambiguities.length) {setQuestions(current=>[...current,...checked.ambiguities.filter(question=>!current.some(item=>item.ambiguityId===question.ambiguityId))]);setMessage('Please clarify the action or deadline below, then confirm and improve again.');return;}
+      if(checked.ambiguities.length) {setQuestions(current=>[...current,...checked.ambiguities.filter(question=>!current.some(item=>item.ambiguityId===question.ambiguityId))]);setMessage('Clarify the action or deadline, then prepare and improve again.');return;}
       const next = await postJson<ImprovementResult>('improve',request);
       setResult(next);setAnalysis(next.analysis);setImproved(next.improvedDraft);setValidation(next.validation);setReview(state=>validateDraft(state));
     } catch(error) {reportError(error);}
-    finally {setBusy(false);}
+    finally {finishAction();}
+  }
+  async function adaptResponse() {
+    if(!startAction('adapt'))return;
+    try {
+      const request=createComposeRequest(receivedEmail,originalDraft,reader,audience,clarifications);
+      discardOutput();
+      const next=await requestAdaptation(request);
+      setAdaptation(next);setAdaptationEdited(false);setResult(next);setAnalysis(next.analysis);setImproved(next.improvedDraft);setValidation(next.validation);setReview(state=>validateDraft(state));
+      setMessage('Adaptation ready. Your original response is unchanged. Continue to Review, check the full message and decide what to use.');
+    } catch(error) {reportError(error);}
+    finally {finishAction();}
   }
   async function revalidate() {
-    setBusy(true);invalidate();
-    try {setValidation(await postJson<ValidationResult>('validate',{originalDraft,improvedDraft,audience,clarifications}));setReview(state=>validateDraft(state));}
+    if(!startAction('validate'))return;invalidate();
+    try {setValidation(await postJson<ValidationResult>(adaptation?'adaptResponse/validate':'validate',{originalDraft,improvedDraft,audience,clarifications,...(adaptation?{receivedEmail}:{})}));setReview(state=>validateDraft(state));}
     catch(error) {reportError(error);}
-    finally {setBusy(false);}
+    finally {finishAction();}
   }
   async function requestSemanticReview() {
-    setBusy(true);setSemantic(null);setMessage('');setReview(state=>clearApproval(state));
+    if(!startAction('semantic'))return;setSemantic(null);setMessage('');setReview(state=>clearApproval(state));
     try {setSemantic(await postJson<SemanticReviewResult>('review',{originalDraft,improvedDraft,audience,clarifications}));}
     catch(error) {reportError(error);}
-    finally {setBusy(false);}
+    finally {finishAction();}
   }
-  const wordingFindings = validation?.findings.filter(finding=>['sourcePassageChanged','unsupportedOrReworded'].includes(finding.category))||[];
-  const contentFindings = validation?.findings.filter(finding=>!['sourcePassageChanged','unsupportedOrReworded'].includes(finding.category))||[];
-  return <div className="shell">
-    <header><a className="brand" href="#">◈ Agent EL</a><span className="pill">Mode B · Shared Communication</span></header>
-    <main>
-      <div className="intro"><p className="eyebrow">HUMAN-CENTERED COMMUNICATION</p><h1>Different backgrounds.<br/>One shared message.</h1><p>Make your English email clearer for everyone, while keeping the details that matter.</p></div>
-      <ol className="stages" aria-label="Communication workflow"><li>Confirm</li><li>Improve and Compare</li><li>Decide</li></ol>
-      <aside className="notice">{result?.isMock ? 'Mock demonstration · Paragraph spacing only, not an AI rewrite.' : result ? 'AI-generated draft · Review every fact before approval.' : 'Local workspace · Mock demonstrations are labeled when used.'} Checks and optional AI review cannot guarantee meaning preservation.</aside>
-      <section className="audience card"><h2>01 / Confirm</h2><p>Describe the shared audience and your goals. Use what you know; a role or nationality does not establish ability, language proficiency or personality.</p><div className="settings">{([
-        ['group','Who the group includes',500],['technicalBackground','General technical background',1000],['communicationObjectives','Communication objectives',1000],['preferences','Known communication preferences',1000],['requiredDetails','Required details or terminology',2000],
-      ] as const).map(([key,label,limit])=><label key={key}>{label}<input disabled={busy} maxLength={limit} value={audience[key]} onChange={event=>{setAudience({...audience,[key]:event.target.value});discardOutput();}}/></label>)}</div></section>
-      <h2 className="stageHeading">02 / Improve and Compare</h2>
-      <div className="drafts">
-        <section className="card"><div className="sectionHead"><h2>Original English email</h2><button className="quiet" disabled={busy} onClick={()=>changeSource(fixture.originalDraft)}>Load example</button></div><label htmlFor="original">Paste your English email</label><textarea id="original" disabled={busy} maxLength={20000} value={originalDraft} onChange={event=>changeSource(event.target.value)} placeholder="Start with the message you want to share…"/><div className="sectionHead"><small>{originalDraft.length.toLocaleString()} / 20,000 characters</small><button disabled={busy||!originalDraft.trim()||!audience.group.trim()} onClick={improve}>{busy?'Working…':'Confirm & improve →'}</button></div></section>
-        <section className="card"><div className="sectionHead"><h2>Improved draft</h2><span className="pill">{result ? (result.isMock?'MOCK DEMONSTRATION':'Ollama · AI-generated draft') : 'Awaiting draft'}</span></div><label htmlFor="improved">Review and edit before approval</label><textarea ref={draftRef} id="improved" disabled={busy||!result} maxLength={20000} value={improvedDraft} onChange={event=>{setImproved(event.target.value);invalidate();}} placeholder="Your draft will appear here for comparison."/><small>{review.approved?'Approved by you':validation?'Deterministic checks completed · Human review required':'Validation required after any change'}</small>{result&&<p><small>Preparation: {result.processingMilliseconds.preparation} ms · Generation: {(result.processingMilliseconds.generation/1000).toFixed(1)} s · Deterministic review: {result.processingMilliseconds.deterministicReview} ms</small></p>}</section>
+  async function copyApproved() {
+    // Guard the handler as well as the button, so only the currently validated and explicitly approved revision is copied.
+    if(busy||!result||!validation||!improvedDraft.trim()||!canCopyApprovedDraft(review)) return;
+    try {await navigator.clipboard.writeText(improvedDraft);setMessage('Approved draft copied.');}
+    catch {setMessage('Clipboard unavailable. Select and copy the approved draft manually.');}
+  }
+  const canApprove=Boolean(result&&validation&&improvedDraft.trim()&&!busy&&hasCurrentValidation(review)&&!review.approved);
+  const canCopy=Boolean(result&&validation&&improvedDraft.trim()&&!busy&&canCopyApprovedDraft(review));
+  const draftActions = <section className="workflowActions panel" aria-label="Draft actions"><div className="actionGroup"><button className="button secondaryButton" disabled={busy||!result} onClick={()=>{setStage(2);requestAnimationFrame(()=>draftRef.current?.focus());}}><WorkspaceIcon name="edit"/>Edit</button><button className="button secondaryButton" disabled={busy||!result} onClick={()=>{setStage(2);void (adaptation?adaptResponse():improve());}}><WorkspaceIcon name="refresh"/>Regenerate</button><button className="button secondaryButton" disabled={busy||!result||!improvedDraft.trim()} onClick={revalidate}>{pendingAction==='validate'?<span className="spinner"/>:<WorkspaceIcon name="shield"/>}{pendingAction==='validate'?'Revalidating…':'Revalidate'}</button><button className="button secondaryButton rejectButton" disabled={busy||!result} onClick={()=>{discardOutput(true);setMessage('Draft rejected. Your original and audience context are retained.');}}><WorkspaceIcon name="close"/>Reject</button></div><div className="actionGroup approvalActions"><button className="button primaryButton" disabled={!canApprove} onClick={()=>setReview(state=>approveDraft(state))}><WorkspaceIcon name="check"/>{review.approved?'Approved':'Approve'}</button><button className="button secondaryButton" disabled={!canCopy} onClick={copyApproved}><WorkspaceIcon name="copy"/>Copy approved</button></div><p className="approvalHint">Approval applies to this exact draft. Any edit or regeneration requires fresh review.</p></section>;
+  const reviewPanel = <ReviewPanel analysis={analysis} questions={questions} answers={answers} result={result} validation={validation} semantic={semantic} busy={busy} reviewing={pendingAction==='semantic'} onSemanticReview={requestSemanticReview}/>;
+  const changeSummary = <ChangeSummary changes={validation?.changeDetails||[]} hasResult={Boolean(result)} hasValidation={Boolean(validation)} isMock={Boolean(result?.isMock)}/>;
+  return <div className={`appShell discoverActive unifiedWorkspace ${stage===1?'readerActive':''}`}>
+    <header className="appHeader"><button className="brand brandButton" disabled={busy} onClick={()=>setStage(0)} aria-label="Ritmo — Discover"><img src="/brand/ritmoMonogram.svg" alt=""/><span className="brandName">Ritmo</span></button><span className="headerDivider"/><div className="workspaceName">Communication Workspace<small>Communication learning platform</small></div><details className="discoverService"><summary>Service status</summary><ServiceStatus/></details></header>
+    <main className="workspace">
+      <StageProgress stage={stage} disabled={busy} blockedStages={stage===1&&!readerConfirmed?[2,3]:[]} onNavigate={navigateStage}/>
+      <div ref={screenRef} tabIndex={-1} className="screenContent" aria-label={['Discover','Understand the reader','Compose and adapt','Review and summary'][stage]}>
+      {stage===0&&<DiscoverScreen onStart={()=>setStage(1)}/>}
+      {stage===1&&<><UnderstandScreen receivedEmail={receivedEmail} reader={reader} analyzing={pendingAction==='reader'} disabled={busy} onAnalyze={analyzeReader} onReview={chooseReader} onChange={changeIncoming}/>{DemoScenarios&&<React.Suspense fallback={null}><DemoScenarios disabled={busy} hasDraft={originalDraft.length>0} onIncoming={changeIncoming} onDraft={value=>{if(!originalDraft.length)changeSource(value);}}/></React.Suspense>}</>}
+      {stage===2&&<>
+      <div className="composeWorkspace">
+        <div className="editorColumn">
+<section className="workspaceIntro composeIntro" id="improve"><div><p className="eyebrow">STAGE 3 · COMPOSE</p><h1>Your response.<br/><span>Your meaning.</span></h1><p>Write what you want to say, then adapt how it connects with your reader.</p></div><span className="modeBadge">English · Review required</span></section>
+          <ComposeContext receivedEmail={receivedEmail} selectedStyle={readerContext?.selectedStyle||null} modelStyle={reader.outdated?null:reader.result?.primaryStyle||null} disabled={busy} onSelect={chooseReader}/>
+          {DemoScenarios&&<React.Suspense fallback={null}><DemoScenarios disabled={busy} hasDraft={originalDraft.length>0} onIncoming={changeIncoming} onDraft={value=>{if(!originalDraft.length)changeSource(value);}}/></React.Suspense>}
+          <details className="audienceCard panel composePreferences" id="prepare"><summary>Audience and writing preferences</summary><AudienceFields audience={audience} disabled={busy} onChange={changeAudience}/></details>
+          {questions.length>0&&<section className="clarificationCard panel" id="clarifications"><div className="clarificationHeading"><WorkspaceIcon name="alert"/><div><h2 ref={clarificationRef} tabIndex={-1}>Clarify before generation</h2><p>Your answers are sender-confirmed context. The original draft stays intact.</p></div></div>{questions.map((question,index)=><label key={question.ambiguityId}><span className="questionNumber">{index+1}.</span> {question.question}<blockquote>{question.sourcePassage}</blockquote><input disabled={busy} maxLength={1000} value={answers[question.ambiguityId]||''} onChange={event=>{setAnswers({...answers,[question.ambiguityId]:event.target.value});discardOutput();}}/></label>)}</section>}
+          <div className="draftGrid">
+            <section className="draftPanel panel"><div className="draftHeading"><WorkspaceIcon name="document"/><h2>Your original response</h2><span className="inputBadge">Input</span></div><label className="visuallyHidden" htmlFor="original">Your original response</label><div className="draftInput"><textarea id="original" disabled={busy} maxLength={20000} value={originalDraft} onChange={event=>changeSource(event.target.value)} placeholder="Write your response here. Include the facts, questions and commitments you want to preserve…" spellCheck/></div><div className="draftFooter"><button className="textButton" disabled={busy||originalDraft.length>0} title="Examples load only into an empty response editor" onClick={()=>{if(!originalDraft.length)changeSource(fixture.originalDraft);}}>Load example</button><span className="characterCount">{originalDraft.length.toLocaleString()} / 20,000</span></div><AdditionalPreferences audience={audience} disabled={busy} onChange={changeAudience}/><div className="generateRow"><p>Your original response stays unchanged.</p><button className="button secondaryButton" disabled={busy||!originalDraft.trim()||!audience.group.trim()} onClick={improve}>Improve clarity only</button><button className="button primaryButton" disabled={busy||!originalDraft.trim()||!readerContext?.selectedStyle||!audience.group.trim()} onClick={adaptResponse}>{pendingAction==='adapt'?<span className="spinner"/>:<WorkspaceIcon name="spark"/>}{pendingAction==='adapt'?'Adapting…':'Adapt my response'}</button></div></section>
+            <section className={`draftPanel improvedPanel panel ${result?'hasResult':''}`}><div className="draftHeading"><WorkspaceIcon name="spark"/><h2>{adaptation?'Suggested adaptation':'Suggested response'}</h2><span className={`outputBadge ${result?.isMock?'mockBadge':''}`}>{result?(adaptationEdited?'Edited by you':result.isMock?'Mock demo':'AI generated'):'Awaiting draft'}</span></div><label className="visuallyHidden" htmlFor="improved">Improved message — review and edit</label><div className="draftInput"><textarea ref={draftRef} id="improved" disabled={busy||!result} maxLength={20000} value={improvedDraft} onChange={event=>{setImproved(event.target.value);setAdaptationEdited(true);invalidate();}} placeholder={(pendingAction==='improve'||pendingAction==='adapt')?'':'Your suggested message will appear here.\n\nReview every fact, uncertainty, deadline and requested action before approving.'} spellCheck/>{(pendingAction==='improve'||pendingAction==='adapt')&&<div className="generatingState" role="status"><span className="spinner"/><strong>{pendingAction==='adapt'?'Adapting your response':'Improving clarity'}</strong><span>Facts and findings will be ready for your review.</span></div>}</div><div className="draftFooter"><span className={`draftState ${review.approved?'isApproved':''}`}>{review.approved?<><WorkspaceIcon name="check"/>Approved by you</>:validation?'Checks completed · Human review required':result?'Edited · Revalidate before approval':'Your review comes next'}</span><span className="characterCount">{improvedDraft.length.toLocaleString()} / 20,000</span></div><div className="outputNotice"><WorkspaceIcon name="info"/><p>{result?.isMock?'Mock demonstration: paragraph spacing only. This is not an AI rewrite.':'AI drafts and automated checks can miss or change meaning. Your approval is always required.'}</p></div></section>
+          </div>
+          <div className="workspaceMessage" role="status" aria-live="polite">{message&&<p className="inlineNotice"><WorkspaceIcon name="info"/>{message}</p>}</div>
+          {adaptation&&<AdaptationNotes result={adaptation} edited={adaptationEdited}/>}
+          {changeSummary}
+          {draftActions}
+          {result&&<details className="processingDetails"><summary>Processing details</summary><p>Preparation: {result.processingMilliseconds.preparation} ms · Generation: {(result.processingMilliseconds.generation/1000).toFixed(1)} s · Deterministic review: {result.processingMilliseconds.deterministicReview} ms</p></details>}
+        </div>
+        <details className="composeChecks"><summary>Checks and preservation warnings</summary>{reviewPanel}</details>
       </div>
-      <div role="status" aria-live="polite" className="message">{message}</div>
-      {questions.length>0&&<section className="card clarification"><h2>Clarify before generation</h2><p>These phrases may affect actions, deadlines or approval. Your answers are sender-confirmed context; source text is retained.</p>{questions.map(question=><label key={question.ambiguityId}><blockquote>{question.sourcePassage}</blockquote>{question.question}<input disabled={busy} maxLength={1000} value={answers[question.ambiguityId]||''} onChange={event=>{setAnswers({...answers,[question.ambiguityId]:event.target.value});discardOutput();}}/></label>)}</section>}
-      {result&&<section className="card decision"><h2>03 / Decide</h2><p>Inspect the comparison and warnings. You can edit, reject, regenerate, or explicitly approve this exact draft.</p><div className="actions"><button disabled={busy} onClick={()=>draftRef.current?.focus()}>Edit draft</button><button disabled={busy||!improvedDraft.trim()} onClick={revalidate}>Revalidate after editing</button><button disabled={busy} onClick={improve}>Regenerate draft</button><button className="quiet" disabled={busy} onClick={()=>{discardOutput(true);setMessage('Draft rejected. Your source and audience context are retained for another attempt.');}}>Reject draft</button><button disabled={busy||!validation||review.approved} onClick={()=>setReview(state=>approveDraft(state))}>I reviewed & approve</button><button disabled={!review.approved||busy} onClick={async()=>{try{await navigator.clipboard.writeText(improvedDraft);setMessage('Approved draft copied.');}catch{setMessage('Clipboard unavailable. Select and copy the approved draft manually.');}}}>Copy approved draft</button></div><small>Approval is your judgment. Every source, context or draft edit revokes previous approval and checks. Nothing is sent.</small></section>}
-      {(result||analysis)&&<div className="reviewGrid"><section className="card"><h2>Source facts and confirmed context</h2><p>{analysis?.limitations.join(' ')}</p><details><summary>Inspect {analysis?.facts.length||0} source passages</summary>{analysis?.facts.map(fact=><article key={fact.factId}><span className="factLabel">{fact.categories.join(', ')} · {fact.origin}</span><blockquote>{fact.sourcePassage}</blockquote></article>)}</details>{!!analysis?.confirmedContext.length&&<details open><summary>Sender-confirmed context</summary>{analysis.confirmedContext.map(fact=><article key={fact.factId}><p>{fact.description}</p><small>Evidence source: {fact.evidenceSource}</small><blockquote>{fact.sourcePassage}</blockquote></article>)}</details>}{validation&&<details open><summary>Observable communication changes</summary>{validation.changeDetails.length?validation.changeDetails.map((change,index)=><article key={index}><strong>{change.whatChanged}</strong><p>{change.whyHelpful}</p><small>Source evidence</small><blockquote>{change.sourceEvidence}</blockquote>{change.generatedEvidence&&<><small>Generated evidence</small><blockquote>{change.generatedEvidence}</blockquote></>}<small>Requires human review · Observable comparison, not model reasoning</small></article>):<p>No selected structural or important wording difference detected. Review the full comparison.</p>}</details>}</section>
-      <section className="card"><h2>Meaning & review</h2><p className="notice">{validation?.limitation||'Draft changed. Revalidate before approval. Previous findings and explanations are invalid.'}</p>{validation&&<><h3>Deterministic content findings ({contentFindings.length})</h3>{contentFindings.length?<FindingList findings={contentFindings}/>:<p>No targeted content warning was found. Checks are limited and may miss errors.</p>}<details><summary>Exact wording checks ({wordingFindings.length})</summary><p>Legitimate paraphrases also trigger these conservative warnings.</p><FindingList findings={wordingFindings}/></details></>}{result&&<div className="semantic"><h3>Optional AI meaning review (experimental)</h3><p>One extra local model call. The same model can repeat or miss errors; this is not an independent accuracy check.</p><button disabled={busy||!validation||result.isMock} onClick={requestSemanticReview}>Request AI meaning review</button>{result.isMock&&<p>Unavailable in mock mode.</p>}{semantic&&<><p>AI review {semantic.reviewStatus} · {(semantic.elapsedMilliseconds/1000).toFixed(1)} s</p>{semantic.limitations.map(text=><p key={text}>{text}</p>)}<FindingList findings={semantic.findings}/></>}</div>}</section></div>}
-      <footer>Independent prototype · No United Nations affiliation or endorsement. Drafts are not stored by the application. Mode C personalization is planned.</footer>
+      </>}
+      {stage===3&&<ReviewSummary originalDraft={originalDraft} improvedDraft={improvedDraft} hasResult={Boolean(result)} hasValidation={Boolean(validation)} targetStyle={adaptation?.targetStyle} factCount={analysis?.facts.length||0} findingCount={validation?.findings.length||0} isMock={Boolean(result?.isMock)} comparison={changeSummary} findings={<div onClick={event=>{if((event.target as HTMLElement).closest('a[href="#clarifications"]')) {event.preventDefault();setStage(2);}}}>{reviewPanel}</div>} actions={<><div className="workspaceMessage" role="status">{message}</div>{draftActions}</>}/>}
+      </div>
+      {stage>0&&<nav className="journeyNavigation" aria-label="Stage navigation"><button className="button secondaryButton" disabled={busy} onClick={()=>setStage(stage-1)}>← Back to {['Discover','Understand','Compose'][stage-1]}</button>{stage<3&&<button className="button primaryButton" disabled={busy||(stage===1&&!readerConfirmed)} onClick={()=>navigateStage(stage+1)}>Continue to {stage===1?'Compose':'Review'} →</button>}</nav>}
+      <footer className="workspaceFooter"><span>Ritmo · Human-centered communication</span><span>Independent prototype · No United Nations affiliation or endorsement · No email sending</span></footer>
     </main>
   </div>;
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(<React.StrictMode><BetaAccess><App/></BetaAccess></React.StrictMode>);

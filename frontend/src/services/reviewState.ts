@@ -8,3 +8,5 @@ export function approveDraft(state: ReviewState): ReviewState {
 }
 export function rejectDraft(state: ReviewState): ReviewState {return changeDraft(state);}
 export function clearApproval(state: ReviewState): ReviewState {return {...state,approved:false};}
+export function hasCurrentValidation(state:ReviewState):boolean {return state.validatedRevision!==null&&state.validatedRevision===state.revision;}
+export function canCopyApprovedDraft(state:ReviewState):boolean {return state.approved&&hasCurrentValidation(state);}

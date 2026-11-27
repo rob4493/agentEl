@@ -1,9 +1,9 @@
 import re
 from hashlib import sha256
-from .emailSchemas import AmbiguityQuestion, Clarification
+from .emailSchemas import AmbiguityQuestion, Clarification, AudienceContext
 from .textPassages import splitPassages
 
-def findAmbiguities(originalDraft: str) -> list[AmbiguityQuestion]:
+def findAmbiguities(originalDraft: str, audience: AudienceContext | None = None) -> list[AmbiguityQuestion]:
     questions = []
     # Limit interruptions to material action/deadline idioms, not general style preferences.
     for passage in splitPassages(originalDraft):
@@ -18,10 +18,17 @@ def findAmbiguities(originalDraft: str) -> list[AmbiguityQuestion]:
             ambiguityId = "ambiguity" + sha256(f"{category}:{passage}".encode()).hexdigest()[:16]
             if not any(item.ambiguityId == ambiguityId for item in questions):
                 questions.append(AmbiguityQuestion(ambiguityId=ambiguityId, category=category, sourcePassage=passage, question=question))
+    objective = audience.communicationObjectives.strip() if audience else ""
+    if re.search(r"\brequest (?:a )?decision\b", objective, re.I):
+        # Only interrupt when no concrete decision request is identifiable; never invent its subject.
+        decisionRequest = re.search(r"\b(?:please |could you |can you )?(?:decide|approve|choose|select)\s+(?!(?:it|this|that)\s*[.!?]?(?:$|\n))[^.!?\n]+|\b(?:decision|approval)\s+(?:on|about|whether|between)\s+\S+|\blet (?:me|us) know (?:whether|which)\s+\S+", originalDraft, re.I)
+        if not decisionRequest:
+            ambiguityId = "ambiguity" + sha256(f"decision:{objective}:{originalDraft}".encode()).hexdigest()[:16]
+            questions.append(AmbiguityQuestion(ambiguityId=ambiguityId, category="requestedAction", sourcePassage=originalDraft, question="What decision are you asking the recipients to make?"))
     return questions
 
-def unresolvedQuestions(originalDraft: str, clarifications: list[Clarification]) -> list[AmbiguityQuestion]:
-    questions = findAmbiguities(originalDraft)
+def unresolvedQuestions(originalDraft: str, clarifications: list[Clarification], audience: AudienceContext | None = None) -> list[AmbiguityQuestion]:
+    questions = findAmbiguities(originalDraft, audience)
     for answer in clarifications:
         if not any(question.ambiguityId == answer.ambiguityId and question.sourcePassage == answer.sourcePassage for question in questions):
             raise ValueError("A clarification no longer matches this source. Analyze the current draft again.")

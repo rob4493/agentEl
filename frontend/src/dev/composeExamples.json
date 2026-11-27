@@ -1,0 +1,9 @@
+{
+  "notice":"Synthetic development demonstrations. Intended styles are demonstration goals, not verified Ollama classifications.",
+  "scenarios":[
+    {"id":"clarification","title":"Project clarification","intendedStyle":"Analytical","receivedEmail":"Before we finalize the plan, could you clarify which teams are included, who approves the draft, and whether testing depends on that approval?","starterDraft":"The plan covers the service team. Maya is the approver. Testing can start after approval. I have not confirmed the approval date. Could you confirm whether you need any additional details?"},
+    {"id":"decision","title":"Purchase decision","intendedStyle":"Driver","receivedEmail":"Please choose a supplier and confirm the next step for the purchase.","starterDraft":"I recommend supplier B at $450. This is a recommendation, not purchase approval. Please approve the choice by December 4 so we can request the order."},
+    {"id":"support","title":"Team support","intendedStyle":"Amiable","receivedEmail":"The schedule change has been difficult for the team. Could we discuss ways to share the workload without overloading anyone?","starterDraft":"I understand the schedule change has been difficult. I can review the workload with you on December 4. I cannot cover additional shifts this week. Could we discuss the available options together?"},
+    {"id":"vision","title":"A creative proposal","intendedStyle":"Expressive","receivedEmail":"Imagine a courtyard where colleagues can share ideas and build something creative together. Could we explore the concept?","starterDraft":"I would like to explore a courtyard for sharing ideas. The concept is still a proposal, and no budget has been approved. Could we discuss the possibilities on December 4?"}
+  ]
+}

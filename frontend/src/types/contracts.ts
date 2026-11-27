@@ -8,3 +8,4 @@ export interface ChangeExplanation { whatChanged: string; whyHelpful: string; so
 export interface ValidationResult { findings: Finding[]; semanticStatus: 'unavailable'; status: 'reviewRequired'; limitation: string; changeDetails: ChangeExplanation[] }
 export interface SemanticReviewResult { reviewStatus: 'completed' | 'unavailable'; findings: Finding[]; limitations: string[]; independent: false; elapsedMilliseconds: number }
 export interface ImprovementResult { improvedDraft: string; analysis: AnalysisResult; validation: ValidationResult; provider: string; isMock: boolean; changes: string[]; changeDetails: ChangeExplanation[]; processingMilliseconds: Record<string,number> }
+export interface AdaptationResult extends ImprovementResult { targetStyle: import('../services/readerState').WritingStyle; styleAdjustments:string[]; preservationWarnings:string[] }

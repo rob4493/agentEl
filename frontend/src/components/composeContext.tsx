@@ -1,0 +1,11 @@
+import {communicationStyles} from './discoverScreen';
+import type {WritingStyle} from '../services/readerState';
+import type {AdaptationResult} from '../types/contracts';
+
+export function ComposeContext({receivedEmail,selectedStyle,modelStyle,disabled,onSelect}:{receivedEmail:string;selectedStyle:WritingStyle|null;modelStyle:WritingStyle|null;disabled:boolean;onSelect:(style:WritingStyle|null)=>void}) {
+  return <section className="panel composeContext" aria-label="Response context"><details open><summary>Incoming message</summary>{receivedEmail?<pre>{receivedEmail}</pre>:<p className="fieldHint">No incoming email provided. You can still write a message and select its target style.</p>}</details><div><label htmlFor="composeStyle">Reader communication style</label><select id="composeStyle" required value={selectedStyle||''} disabled={disabled} onChange={event=>onSelect(event.target.value?event.target.value as WritingStyle:null)}><option value="">Choose a target style…</option>{communicationStyles.map(style=><option key={style.name} value={style.name}>{style.name}</option>)}</select><p className="fieldHint">{selectedStyle?`Selected by you: ${selectedStyle}. You can change this choice.`:modelStyle?`Ritmo suggestion: ${modelStyle}. It has not been confirmed; explicitly choose a target style.`:'Choose a style explicitly. A model suggestion is never accepted automatically.'}</p><p className="fieldHint">This guides the response, not a fixed personality label.</p></div></section>;
+}
+
+export function AdaptationNotes({result,edited}:{result:AdaptationResult;edited:boolean}) {
+  return <section className="panel adaptationNotes" aria-label="Adaptation notes"><h2>Response for {result.targetStyle}</h2>{edited?<p>You edited the suggestion. The model's original change explanation no longer describes this version. Revalidate and review the current message.</p>:<>{!!result.styleAdjustments.length&&<><h3>Model-described style adjustments</h3><p className="fieldHint">These descriptions can also be inaccurate. Check them against your original response.</p><ul>{result.styleAdjustments.map((change,index)=><li key={index}>{change}</li>)}</ul></>}{result.preservationWarnings.map((warning,index)=><p className="fieldHint" key={index}>{warning}</p>)}</>}</section>;
+}

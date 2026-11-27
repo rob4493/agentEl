@@ -1,0 +1,26 @@
+{
+  "notice": "Exact user-authored regression drafts supplied 2026-11-23. Test/evaluation only; never production prompt examples or public-facing example controls. No expected rewritten answers.",
+  "cases": [
+    {
+      "id": "atlas",
+      "style": "Analytical",
+      "originalDraft": "Subject: Re: Project Atlas — Pilot Results and Data Verification\nHi Taylor,\nThanks for checking in!\nWe had 40 people start the pilot, and 32 finished, so that's an 80% completion rate (32 out of 40).\nThere are still two issues we're working on: a dashboard export bug and some delayed notifications. We're treating the results as preliminary until those issues have been reviewed.\nI'm planning to send the final report on Friday, December 4, 2026.\nHope this helps!\nBest,\nMorgan"
+    },
+    {
+      "id": "schedule",
+      "style": "Amiable",
+      "originalDraft": "Subject: Re: Checking In on Our Team\nHi Taylor,\nThanks for reaching out.\nThe new schedule started last Monday. Two team members mentioned that the evening shifts have been difficult for them.\nWe haven't agreed on any schedule changes yet. I'll bring up their concerns during Thursday's team check-in so we can discuss the situation.\nI'm planning to share an update with everyone after the meeting.\nThanks,\nMorgan"
+    },
+    {
+      "id": "vendor",
+      "style": "Driver",
+      "originalDraft": "Subject: Re: Vendor Decision Required\nHi Taylor,\nI looked over both vendor options and think Northstar Events would be the better choice.\nNorthstar's estimated cost is $4,800, compared with $5,200 for Summit Planning. Northstar can also provide the equipment and setup we need for the event.\nI haven't booked anything yet because I wanted to get your approval first.\nI can send you the complete quote by Thursday at 3:00 PM if you'd like to review it.\nThanks,\nMorgan"
+    },
+    {
+      "id": "showcase",
+      "style": "Expressive",
+      "heldOut": true,
+      "originalDraft": "Subject: Re: Bringing Our Innovation Showcase to Life\nHi Taylor,\nI have three ideas for the opening display.\nFirst, we could create a welcome wall with photos of our team's projects.\nSecond, we could show a short video featuring three team members talking about their work.\nThird, we could set up a table with two interactive prototypes for visitors to try.\nThe communications team has approved the project photos, but the video still needs review.\nWe haven't confirmed the venue layout, so I can't say where the displays will go yet.\nI can share a draft concept on Friday for your feedback.\nThanks,\nMorgan"
+    }
+  ]
+}
